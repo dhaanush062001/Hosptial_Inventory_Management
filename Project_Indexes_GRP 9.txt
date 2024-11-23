@@ -1,0 +1,51 @@
+CREATE NONCLUSTERED INDEX IX_Patient_Name
+ON Patient (Patient_Name);
+
+CREATE NONCLUSTERED INDEX IX_Medication_Name
+ON Medication (Medication_Name);
+
+CREATE NONCLUSTERED INDEX IX_Prescription_Date
+ON Prescription (Prescription_Date);
+
+-- Drop the existing master key if it exists
+IF EXISTS (SELECT * FROM sys.symmetric_keys WHERE name = '##MS_DatabaseMasterKey##')
+BEGIN
+    DROP MASTER KEY;
+    PRINT 'Existing master key dropped successfully.';
+END;
+
+
+ALTER TABLE EmployeeData
+ADD Username NVARCHAR(50),
+    [Password] VARBINARY(400);
+
+
+-- Create a master key
+CREATE MASTER KEY
+ENCRYPTION BY PASSWORD = 'StrongMasterKeyPassword123!';
+
+
+-- Create a certificate
+CREATE CERTIFICATE EmployeeCert
+WITH SUBJECT = 'Employee Data Encryption';
+
+
+-- Create a symmetric key
+CREATE SYMMETRIC KEY EmployeeSymKey
+WITH ALGORITHM = AES_256
+ENCRYPTION BY CERTIFICATE EmployeeCert;
+
+
+OPEN SYMMETRIC KEY EmployeeSymKey
+DECRYPTION BY CERTIFICATE EmployeeCert;
+
+
+UPDATE EmployeeData
+SET Username = LastName, -- Replace LastName with the appropriate column
+    [Password] = EncryptByKey(
+        Key_GUID('EmployeeSymKey'),
+        CONVERT(VARBINARY, 'SamplePassword123') -- Replace with actual data
+    );
+
+
+CLOSE SYMMETRIC KEY EmployeeSymKey;

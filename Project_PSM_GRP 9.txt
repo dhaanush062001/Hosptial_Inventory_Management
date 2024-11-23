@@ -1,0 +1,87 @@
+CREATE PROCEDURE AddNewPatient
+    @PatientName NVARCHAR(50),
+    @PatientDOB DATE,
+    @PatientContact NVARCHAR(15),
+    @NewPatientID INT OUTPUT
+AS
+BEGIN
+    INSERT INTO Patient (Patient_Name, Patient_DOB, Patient_Contact)
+    VALUES (@PatientName, @PatientDOB, @PatientContact);
+    
+    SET @NewPatientID = SCOPE_IDENTITY();
+END;
+
+CREATE PROCEDURE GetMedicationDetails
+    @MedicationID INT
+AS
+BEGIN
+    SELECT * 
+    FROM Medication 
+    WHERE Medication_ID = @MedicationID;
+END;
+
+CREATE PROCEDURE UpdateInventory
+    @MedicationID INT,
+    @Quantity INT
+AS
+BEGIN
+    UPDATE Inventory
+    SET Quantity = Quantity + @Quantity
+    WHERE Medication_ID = @MedicationID;
+END;
+
+
+CREATE VIEW TopPrescribedMedications AS
+SELECT Medication_Name, COUNT(Prescription_ID) AS PrescriptionCount
+FROM Prescription
+JOIN Medication ON Prescription.Medication_ID = Medication.Medication_ID
+GROUP BY Medication_Name
+ORDER BY PrescriptionCount DESC;
+
+CREATE VIEW ActivePatients AS
+SELECT DISTINCT P.Patient_Name, P.Patient_Contact
+FROM Patient P
+JOIN Prescription PR ON P.Patient_ID = PR.Patient_ID
+WHERE PR.Expiry_Date > GETDATE();
+
+CREATE VIEW LowStockInventory AS
+SELECT Medication_Name, Quantity
+FROM Inventory
+WHERE Quantity < 10;
+
+CREATE FUNCTION GetPatientAge (@PatientDOB DATE)
+RETURNS INT
+AS
+BEGIN
+    RETURN DATEDIFF(YEAR, @PatientDOB, GETDATE());
+END;
+
+CREATE FUNCTION CalculateCost (@UnitPrice DECIMAL(10, 2), @Quantity INT)
+RETURNS DECIMAL(10, 2)
+AS
+BEGIN
+    RETURN @UnitPrice * @Quantity;
+END;
+
+CREATE FUNCTION IsPrescriptionValid (@ExpiryDate DATE)
+RETURNS BIT
+AS
+BEGIN
+    RETURN CASE WHEN @ExpiryDate > GETDATE() THEN 1 ELSE 0 END;
+END;
+
+CREATE TRIGGER PatientContactUpdateLog
+ON Patient
+AFTER UPDATE
+AS
+BEGIN
+    INSERT INTO PatientLog (Patient_ID, OldContact, NewContact, ChangeDate)
+    SELECT 
+        d.Patient_ID,
+        d.Patient_Contact AS OldContact,
+        i.Patient_Contact AS NewContact,
+        GETDATE() AS ChangeDate
+    FROM Inserted i
+    JOIN Deleted d ON i.Patient_ID = d.Patient_ID
+    WHERE d.Patient_Contact <> i.Patient_Contact;
+END;

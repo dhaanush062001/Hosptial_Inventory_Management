@@ -1,0 +1,105 @@
+CREATE DATABASE projectdmdd;
+GO
+use projectdmdd;
+GO
+-- Drop existing tables to allow re-running of the script
+DROP TABLE IF EXISTS Usage;
+DROP TABLE IF EXISTS Expiry;
+DROP TABLE IF EXISTS Inventory;
+DROP TABLE IF EXISTS Supplier;
+DROP TABLE IF EXISTS Order_Detail;
+DROP TABLE IF EXISTS Orders;
+DROP TABLE IF EXISTS Prescription;
+DROP TABLE IF EXISTS Medication;
+DROP TABLE IF EXISTS Patient;
+DROP TABLE IF EXISTS Pharmacist;
+
+-- Create tables with constraints, primary keys, and relationships
+
+-- Patient Table
+CREATE TABLE Patient (
+    Patient_ID INT PRIMARY KEY IDENTITY(1,1),
+    Patient_Name VARCHAR(100) NOT NULL,
+    Patient_DOB DATE NOT NULL,
+    Patient_Contact VARCHAR(15) NOT NULL
+);
+
+-- Prescription Table
+CREATE TABLE Prescription (
+    Prescription_ID INT PRIMARY KEY IDENTITY(1,1),
+    Patient_ID INT NOT NULL,
+    Medication_ID INT NOT NULL,
+    Prescription_Quantity INT CHECK (Prescription_Quantity > 0),
+    Prescription_Date DATE NOT NULL,
+    FOREIGN KEY (Patient_ID) REFERENCES Patient(Patient_ID)
+);
+
+-- Medication Table
+CREATE TABLE Medication (
+    Medication_ID INT PRIMARY KEY IDENTITY(1,1),
+    Medication_Name VARCHAR(100) NOT NULL,
+    Medication_Description TEXT,
+    Medication_Dosage VARCHAR(50),
+    Medication_Type VARCHAR(50) CHECK (Medication_Type IN ('Tablet', 'Injection', 'Syrup'))
+);
+
+-- Orders Table
+CREATE TABLE Orders (
+    Order_ID INT PRIMARY KEY IDENTITY(1,1),
+    Patient_ID INT NOT NULL,
+    FOREIGN KEY (Patient_ID) REFERENCES Patient(Patient_ID)
+);
+
+-- Order_Detail Table
+CREATE TABLE Order_Detail (
+    Order_Detail_ID INT PRIMARY KEY IDENTITY(1,1),
+    Order_ID INT NOT NULL,
+    Medication_ID INT NOT NULL,
+    Price DECIMAL(10, 2) CHECK (Price >= 0),
+    Quantity INT CHECK (Quantity > 0),
+    FOREIGN KEY (Order_ID) REFERENCES Orders(Order_ID),
+    FOREIGN KEY (Medication_ID) REFERENCES Medication(Medication_ID)
+);
+
+-- Pharmacist Table
+CREATE TABLE Pharmacist (
+    Pharmacist_ID INT PRIMARY KEY IDENTITY(1,1),
+    Pharmacist_Name VARCHAR(100) NOT NULL,
+    Pharmacist_Contact VARCHAR(15) NOT NULL,
+    Pharmacist_Location VARCHAR(100)
+);
+
+-- Inventory Table
+CREATE TABLE Inventory (
+    Inventory_ID INT PRIMARY KEY IDENTITY(1,1),
+    Stock_Level INT CHECK (Stock_Level >= 0),
+    Reorder_Level INT CHECK (Reorder_Level > 0),
+    Pharmacist_ID INT NOT NULL,
+    FOREIGN KEY (Pharmacist_ID) REFERENCES Pharmacist(Pharmacist_ID)
+);
+
+-- Supplier Table
+CREATE TABLE Supplier (
+    Supplier_ID INT PRIMARY KEY IDENTITY(1,1),
+    Supplier_Name VARCHAR(100) NOT NULL,
+    Supplier_Contact VARCHAR(15) NOT NULL,
+    Supplier_Address VARCHAR(255) NOT NULL
+);
+
+-- Expiry Table
+CREATE TABLE Expiry (
+    Batch_ID INT PRIMARY KEY IDENTITY(1,1),
+    Medication_ID INT NOT NULL,
+    Expiry_Date DATE NOT NULL,
+    Manufacture_Date DATE NOT NULL,
+    Quantity INT CHECK (Quantity > 0),
+    FOREIGN KEY (Medication_ID) REFERENCES Medication(Medication_ID)
+);
+
+-- Usage Table
+CREATE TABLE Usage (
+    Usage_ID INT PRIMARY KEY IDENTITY(1,1),
+    Medication_ID INT NOT NULL,
+    Usage_Quantity INT CHECK (Usage_Quantity > 0),
+    FOREIGN KEY (Medication_ID) REFERENCES Medication(Medication_ID)
+);
